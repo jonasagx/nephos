@@ -1,6 +1,7 @@
 import os
 import cv2 as cv
 import sys
+import csv
 from filter import filterDistances
 from filter import filterEuDistances
 
@@ -40,10 +41,15 @@ def seekMatches():
     return trackSerie
 
 def printer(lines):
-    print("x1, y1, x2, y2")
+    writer = open("vector_map.csv", "wb")
+
+    header = "x1, y1, x2, y2\n"
+    writer.write(header)
+
     for line in lines:
-        s = "%d, %d, %d, %d" % (line[0][0], line[0][1], line[1][0], line[1][1])
-        print(s)
+        s = "%d, %d, %d, %d\n" % (line[0][0], line[0][1], line[1][0], line[1][1])
+        #print(s)
+        writer.write(s)
 
 path = ''
 filesList = []
@@ -54,7 +60,7 @@ filtered = []
 
 if __name__ == '__main__':
     path, filesList = loadFiles()
-    #print len(filesList), path
+    print len(filesList), path
     matches_set = seekMatches()
     filtered = filterEuDistances(matches_set)
     printer(filtered)
