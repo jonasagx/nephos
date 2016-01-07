@@ -1,0 +1,12 @@
+#!/usr/bin/python3.4
+from PIL import Image
+import os
+
+fileList = os.listdir()
+s = [309, 334, 501, 522]
+
+for f in fileList:
+    if f.find("jpg") >= 0:
+        im = Image.open(f)
+        print(f)
+        im.crop(s).save(im.filename.replace(".jpg", "_square.jpg"))

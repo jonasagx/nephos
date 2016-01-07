@@ -1,0 +1,24 @@
+# -*- coding: utf-8 -*-
+from PIL import Image
+import cv2 as cv
+import sys
+
+assert len(sys.argv) > 1, "No image to read"
+
+#Read image as gray scale
+im = cv.imread(sys.argv[1],  0)
+
+def threshold(im, max, min, binValue=255):
+    '''
+    Binarize image using range
+    '''
+    for i in xrange(len(im)):
+        for j in xrange(len(im[0])):
+            if min <= im.item((i, j)) <= max:
+                im.itemset((i, j), binValue)
+            else:
+                im.itemset((i, j), 0)
+
+    Image.fromarray(im, "L").show()
+
+threshold(im, 79, 95)
