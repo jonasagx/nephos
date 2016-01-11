@@ -17,6 +17,7 @@ def seekMatches():
     #print 'seekMatches'
     trackSerie = {}
     detector = cv.xfeatures2d.SURF_create()
+    #detector = cv.ORB_create()
     '''
     If it is true, Matcher returns only those matches with value (i,j) such that i-th descriptor in set A has j-th descriptor in set B as the best match and vice-versa. That is, the two features in both sets should match each other. It provides consistant result, and is a good alternative to ratio test proposed by D.Lowe in SIFT paper.
 '''
@@ -28,16 +29,19 @@ def seekMatches():
         img1 = cv.imread(path + filesList[index], 0)
         img2 = cv.imread(path + filesList[index + 1], 0)
 
-        (kp1, des1) = detector.detectAndCompute(img1, None)
-        (kp2, des2) = detector.detectAndCompute(img2, None)
+        try:
+            (kp1, des1) = detector.detectAndCompute(img1, None)
+            (kp2, des2) = detector.detectAndCompute(img2, None)
 
-        matches = matcher.match(des1, des2)
+            matches = matcher.match(des1, des2)
 
-        trackSerie[index] = {'matches': matches,
+            trackSerie[index] = {'matches': matches,
                               'kp1': kp1,
                               'kp2': kp2,
                               'des1': des1,
                               'des2': des2}
+        except Exception, ex:
+            continue
     return trackSerie
 
 def printer(lines):
