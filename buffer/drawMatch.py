@@ -1,6 +1,6 @@
 # matching features of two images
 import sys
-sys.path.append("/usr/local/lib/python2.7/site-packages/")
+# sys.path.append("/usr/local/lib/python2.7/site-packages/")
 import cv2
 import scipy as sp
 
