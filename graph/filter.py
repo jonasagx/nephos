@@ -1,5 +1,6 @@
 from cv2 import norm
 from numpy import mean
+from math import atan2
 
 def filterDistances(trackSerie):
     filtered = []
@@ -33,8 +34,23 @@ def filterEuDistances(trackSerie):
         for match in track['matches']:
             p1 = track['kp1'][match.queryIdx].pt
             p2 = track['kp2'][match.trainIdx].pt
-            print str(norm(p1, p2)) + ", ",
+            #print str(norm(p1, p2)) + ", ",
             if norm(p1, p2) < mean:
                 filtered.append((p1, p2))
+
+    return filtered
+
+def basicFormater(trackSerie):
+    filtered = []
+
+    for key, track in trackSerie.items():
+            #Get list of distances
+            distances_sum = 0.0
+
+            for match in track['matches']:
+                p1 = track['kp1'][match.queryIdx].pt
+                p2 = track['kp2'][match.trainIdx].pt
+                angle = atan2(p1[0] - p2[0], p1[1] - p2[1])
+                filtered.append((p1, p2, norm(p1, p2), angle))
 
     return filtered

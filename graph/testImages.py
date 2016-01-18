@@ -16,8 +16,8 @@ def loadFiles():
 def seekMatches():
     trackSerie = {}
     #detector = cv.xfeatures2d.SURF_create()
-    # detector = cv.ORB_create()
-    detector = cv.xfeatures2d.SIFT_create()
+    detector = cv.ORB_create()
+    # detector = cv.xfeatures2d.SIFT_create()
     # detector = cv.xfeatures2d.StarDetector_create()
     '''
     If it is true, Matcher returns only those matches with value (i,j) such that i-th descriptor in set A has j-th descriptor in set B as the best match and vice-versa. That is, the two features in both sets should match each other. It provides consistant result, and is a good alternative to ratio test proposed by D.Lowe in SIFT paper.
@@ -25,12 +25,12 @@ def seekMatches():
     matcher = cv.BFMatcher(crossCheck=True)
 
     for index in xrange(len(filesList)):
-        print filesList[index]
-        try:
-            img1 = cv.imread(path + filesList[index])
-            (kp1, des1) = detector.detectAndCompute(img1, None)
-        except Exception, ex:
-            pass
+        if(filesList[index].find(".jpg") == -1):
+            continue
+
+        print path + filesList[index]
+        img1 = cv.imread(path + filesList[index], 0)
+        (kp1, des1) = detector.detectAndCompute(img1, None)
     return trackSerie
 
 path = ''

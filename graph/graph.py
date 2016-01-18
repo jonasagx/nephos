@@ -2,8 +2,9 @@ import os
 import cv2 as cv
 import sys
 import csv
-from filter import filterDistances
-from filter import filterEuDistances
+#from filter import filterDistances
+#from filter import filterEuDistances
+from filter import basicFormater
 
 def loadFiles():
     assert len(sys.argv) > 1, "Pass folder path as param"
@@ -16,8 +17,9 @@ def loadFiles():
 def seekMatches():
     #print 'seekMatches'
     trackSerie = {}
-    detector = cv.xfeatures2d.SURF_create()
-    #detector = cv.ORB_create()
+    # detector = cv.xfeatures2d.SIFT_create()
+    # detector = cv.xfeatures2d.SURF_create()
+    detector = cv.ORB_create()
     '''
     If it is true, Matcher returns only those matches with value (i,j) such that i-th descriptor in set A has j-th descriptor in set B as the best match and vice-versa. That is, the two features in both sets should match each other. It provides consistant result, and is a good alternative to ratio test proposed by D.Lowe in SIFT paper.
 '''
@@ -29,30 +31,34 @@ def seekMatches():
         img1 = cv.imread(path + filesList[index], 0)
         img2 = cv.imread(path + filesList[index + 1], 0)
 
-        try:
-            (kp1, des1) = detector.detectAndCompute(img1, None)
-            (kp2, des2) = detector.detectAndCompute(img2, None)
+        if(img1 == None or img2 == None):
+            continue
 
-            matches = matcher.match(des1, des2)
+        (kp1, des1) = detector.detectAndCompute(img1, None)
+        (kp2, des2) = detector.detectAndCompute(img2, None)
 
-            trackSerie[index] = {'matches': matches,
+        if(des1 == None or des2 == None):
+            continue
+
+        matches = matcher.match(des1, des2)
+        trackSerie[index] = {'matches': matches,
                               'kp1': kp1,
                               'kp2': kp2,
                               'des1': des1,
                               'des2': des2}
-        except Exception, ex:
-            continue
     return trackSerie
 
 def printer(lines):
-    writer = open("vector_map.csv", "wb")
+    # writer = open("vector_map_surf.csv", "wb")
+    writer = open("vector_map_orb.csv", "wb")
 
-    header = "x1, y1, x2, y2\n"
+    header = "x1, y1, x2, y2, d, a\n"
     writer.write(header)
 
     for line in lines:
-        s = "%d, %d, %d, %d\n" % (line[0][0], line[0][1], line[1][0], line[1][1])
+        s = "%d, %d, %d, %d, %.3f, %.3f\n" % (line[0][0], line[0][1], line[1][0], line[1][1], line[2], line[3])
         #print(s)
+        # print(s)
         writer.write(s)
 
 path = ''
@@ -66,5 +72,5 @@ if __name__ == '__main__':
     path, filesList = loadFiles()
     print len(filesList), path
     matches_set = seekMatches()
-    filtered = filterEuDistances(matches_set)
+    filtered = basicFormater(matches_set)
     printer(filtered)

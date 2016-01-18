@@ -16,6 +16,6 @@ int main(int argc, char *argv[])
 
 	    input_image.convertTo(I, CV_8U);
 	    imwrite( path.c_str(), I );
-	    cout << path.c_str() << endl;
+	    cout << path.c_str() << " " << CV_8U << I.depth() << " " << input_image.depth() << endl;
     }
 }
