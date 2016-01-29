@@ -26,6 +26,8 @@ X, labels_true = make_blobs(n_samples=750, centers=centers, cluster_std=0.4,
 
 X = StandardScaler().fit_transform(X)
 
+print(X)
+
 ##############################################################################
 # Compute DBSCAN
 db = DBSCAN(eps=0.3, min_samples=10).fit(X)
@@ -46,8 +48,6 @@ print("Adjusted Mutual Information: %0.3f"
       % metrics.adjusted_mutual_info_score(labels_true, labels))
 print("Silhouette Coefficient: %0.3f"
       % metrics.silhouette_score(X, labels))
-
-exit(0)
 
 ##############################################################################
 # Plot result

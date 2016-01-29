@@ -1,4 +1,4 @@
-filename = "vector_map.csv"
+filename = "test.csv"
 # print(filename)
 
 d <- read.csv(file=filename, head=TRUE, sep=',')
