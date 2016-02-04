@@ -18,8 +18,8 @@ def seekMatches():
     #print 'seekMatches'
     trackSerie = {}
     # detector = cv.xfeatures2d.SIFT_create()
-    detector = cv.xfeatures2d.SURF_create()
-    # detector = cv.ORB_create()
+    # detector = cv.xfeatures2d.SURF_create()
+    detector = cv.ORB_create()
     '''
     If it is true, Matcher returns only those matches with value (i,j) such that i-th descriptor in set A has j-th descriptor in set B as the best match and vice-versa. That is, the two features in both sets should match each other. It provides consistant result, and is a good alternative to ratio test proposed by D.Lowe in SIFT paper.
 '''
@@ -52,7 +52,7 @@ def printer(lines):
     # writer = open("vector_map_surf.csv", "wb")
     # writer = open("vector_map_surf.csv", "wb")
 
-    header = "x1, y1, x2, y2, d, a, t\n"
+    header = "x1, y1, x2, y2, d, a, t"
     # writer.write(header)
 
     print(header)
@@ -70,7 +70,6 @@ filtered = []
 
 if __name__ == '__main__':
     path, filesList = loadFiles()
-    print len(filesList), path
     matches_set = seekMatches()
     filtered = basicFormater(matches_set)
     printer(filtered)
