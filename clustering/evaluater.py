@@ -31,6 +31,26 @@ for dot in dots:
 	# print "%.3f," % distance.euclidean(origin, dot)
 	dis.append(distance.euclidean(origin, dot))
 
+# import matplotlib.pyplot as plt
+# import scipy
+# import scipy.stats
+# size = len(dis)
+# x = scipy.arange(size)
+# y = dis
+# y = scipy.int_(scipy.round_(scipy.stats.vonmises.rvs(5,size=size)*47))
+# h = plt.hist(y, bins=range(48), color='w')
+
+# dist_names = ['gamma', 'beta', 'norm']
+
+# for dist_name in dist_names:
+#     dist = getattr(scipy.stats, dist_name)
+#     param = dist.fit(y)
+#     pdf_fitted = dist.pdf(x, *param[:-2], loc=param[-2], scale=param[-1]) * size
+#     plt.plot(pdf_fitted, label=dist_name)
+#     plt.xlim(0,47)
+# plt.legend(loc='upper right')
+# plt.show()
+
 import matplotlib.pyplot as plt
 
 # fig = plt.figure()
@@ -44,6 +64,6 @@ import matplotlib.pyplot as plt
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
-res = stats.probplot(dis, dist=stats.loggamma, sparams=(2.5,), plot=ax)
+res = stats.probplot(dis, dist=stats.norm, sparams=(np.mean(dis), np.std(dis)), plot=ax)
 ax.set_title("Probplot")
 plt.show()
