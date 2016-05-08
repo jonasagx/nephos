@@ -1,4 +1,0 @@
-from PIL import Image
-import sys
-
-assert len(sus.argv) > 1, "Pass an image filename"
