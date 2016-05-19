@@ -1,0 +1,90 @@
+import os
+import cv2 as cv
+import sys
+
+def dstMean(matches, kp1, kp2):
+    s = 0.0
+
+    for m in matches:
+        d = cv.norm(kp1[m.queryIdx].pt, kp2[m.trainIdx].pt)
+        s += d
+    return s/len(matches)
+
+def simMean(matches):
+    s = 0.0
+
+    for m in matches:
+        s += m.distance
+
+    return s/len(matches)
+
+def loadFiles():
+    assert len(sys.argv) > 1, "Pass folder path as param"
+    path = sys.argv[1]
+    assert path.find('/') != -1, "Pass a valid path with slash(/)"
+    filesList = os.listdir(path)
+    filesList.sort()
+    return path, filesList
+
+def seekMatches(filter='distance'):
+    #print 'seekMatches'
+    detector = cv.xfeatures2d.SURF_create()
+    '''
+    If it is true, Matcher returns only those matches with value (i,j) such that i-th descriptor in set A has j-th descriptor in set B as the best match and vice-versa. That is, the two features in both sets should match each other. It provides consistant result, and is a good alternative to ratio test proposed by D.Lowe in SIFT paper.
+'''
+    matcher = cv.BFMatcher(crossCheck=True)
+    #print len(filesList)
+
+    if filter == 'distance':
+        print "x1, y1, x2, y2"
+    
+    for index in xrange(len(filesList) - 1):
+        #print index, index + 1, filesList[index], filesList[index + 1]
+        #print path + filesList[index], path + filesList[index + 1]
+        img1 = cv.imread(path + filesList[index], 0)
+        img2 = cv.imread(path + filesList[index + 1], 0)
+
+        (kp1, des1) = detector.detectAndCompute(img1, None)
+        (kp2, des2) = detector.detectAndCompute(img2, None)
+
+        matches = matcher.match(des1, des2)
+
+        if filter == 'distance':
+            filterDIstances(matches, kp1, kp2)
+        else:
+            filterSimilatiry(matches, kp1, kp2)
+            
+def filterSimilatiry(matches):
+    mean = simMean(matches)
+    for m in matches:
+        eucDistances.append(cv.norm(kp1[m.queryIdx].pt, kp2[m.trainIdx].pt))
+        distances.append(m.distance)
+
+        if m.distance < mean:
+            print "%d, %d, %d, %d" % (kp1[m.queryIdx].pt[0],
+                                      kp1[m.queryIdx].pt[1],
+                                      kp2[m.trainIdx].pt[0],
+                                      kp2[m.trainIdx].pt[1])
+    
+def filterDIstances(matches, kp1, kp2):
+    #print "filterDIstances"
+    mean = dstMean(matches, kp1, kp2)
+    for m in matches:
+        eucDistances.append(cv.norm(kp1[m.queryIdx].pt, kp2[m.trainIdx].pt))
+        distances.append(m.distance)
+
+        if cv.norm(kp1[m.queryIdx].pt, kp2[m.trainIdx].pt) < 10:
+            print "%d, %d, %d, %d" % (kp1[m.queryIdx].pt[0],
+                                      kp1[m.queryIdx].pt[1],
+                                      kp2[m.trainIdx].pt[0],
+                                      kp2[m.trainIdx].pt[1])
+
+path = ''
+filesList = []
+eucDistances = []
+distances = []
+            
+if __name__ == '__main__':
+    path, filesList = loadFiles()
+    #print len(filesList), path
+    seekMatches()    
