@@ -12,7 +12,6 @@ def loadPictures(path):
 
 def readPictures(pics, path):
 	return [{"index":index, "pic": cv.imread(path + pic)} for index, pic in enumerate(pics)]
-	# return [cv.imread(pic) for key, pic in enumerate(pics)]
 
 def dumpKey(key):
 	return {
