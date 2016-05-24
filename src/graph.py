@@ -16,7 +16,7 @@ path = sys.argv[1]
 filesList = loadFiles(path)
 
 matcher = cv.BFMatcher(crossCheck=True)
-detector = cv.xfeatures2d.SURF_create()
+detector = cv.xfeatures2d.SIFT_create()
 # detector = cv.ORB_create()
 
 matches_set = seekMatches(detector, matcher, filesList, path)

@@ -2,6 +2,7 @@ import os
 import time
 import cv2 as cv
 from numpy import mean
+from numpy import std
 from math import atan2
 from numpy import mean
 from scipy.spatial import distance
@@ -55,27 +56,32 @@ def filterEuDistances(trackSerie):
 def basicFormater(trackSerie):
     lines = []
     for key, track in trackSerie.items():
-            filtered = []
-            for match in track['matches']:
-                p1 = track['kp1'][match.queryIdx].pt
-                p2 = track['kp2'][match.trainIdx].pt
-                angle = atan2(p1[0] - p2[0], p1[1] - p2[1])
-                filtered.append((p1, p2, distance.euclidean(p1, p2), angle, key))
-            lines.append(filtered)
+        filtered = []
+        for match in track['matches']:
+            p1 = track['kp1'][match.queryIdx].pt
+            p2 = track['kp2'][match.trainIdx].pt
+            angle = atan2(p1[0] - p2[0], p1[1] - p2[1])
+            filtered.append((p1, p2, distance.euclidean(p1, p2), angle, key))
+        lines.append(filtered)
     return lines
 
 def printer(photos):
     s = "x1, y1, x2, y2, d, a, t\n"
     for lines in photos:
+        distanceSerie = [line[2] for line in lines]
+        distanceMean = mean(distanceSerie)
         for line in lines:
-            s += "%d, %d, %d, %d, %.3f, %.3f, %d\n" % (line[0][0], line[0][1], line[1][0], line[1][1], line[2], line[3], line[4])
+            if distanceMean * 0.2 < line[2] < distanceMean * 0.35:
+                s += "%d, %d, %d, %d, %.3f, %.3f, %d\n" % (line[0][0], line[0][1], line[1][0], line[1][1], line[2], line[3], line[4])
     return s
 
 def countPositives(photos):
     results = []
     for lines in photos:
-        m = mean([d[2] for d in lines])
-        positives = [d[2] <= 2 * m for d in lines].count(True)
+        serie = [d[2] for d in lines]
+        m = mean(serie)
+        s = std(serie)
+        positives = [d[2] <= s + m and d[2] >= m - s for d in lines].count(True)
         results.append(positives)
     return results
 
@@ -136,14 +142,22 @@ def meanByPhoto(filesList, path):
         stats.append(im.mean())
     return stats
 
+def createVisualMatch(im1, im2, detector, matcher):
+    (kp1, des1) = detector.detectAndCompute(im1, None)
+    (kp2, des2) = detector.detectAndCompute(im2, None)
+
+    matches = matcher.match(des1,des2)
+    im3 = cv.drawMatches(im1, kp1, im2, kp2, matches[:10], None, flags=2)
+    return im3
+
 def seekMatches(detector, matcher, filesList, path):
     trackSerie = {}
     for index in xrange(len(filesList) - 1):
         img1 = cv.imread(path + filesList[index], 0)
         img2 = cv.imread(path + filesList[index + 1], 0)
 
-        # if(img1 == None or img2 == None):
-            # continue
+        if(img1 == None or img2 == None):
+            continue
         t11 = time.time()
         (kp1, des1) = detector.detectAndCompute(img1, None)
         t12 = time.time()
