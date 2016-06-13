@@ -115,14 +115,20 @@ def basicFormater(trackSerie):
 		lines.append(filtered)
 	return lines
 
-def printer(photos):
-	s = "x1, y1, x2, y2, d, a, t, dc\n"
+def flatView(photos):
+	data = []
 	for lines in photos:
 		distanceSerie = [line[2] for line in lines]
 		distanceMean = mean(distanceSerie)
 		for line in lines:
 			# if distanceMean * 0.2 < line[2] < distanceMean * 0.35:
-			s += "%d, %d, %d, %d, %.3f, %.3f, %d, %.3f\n" % (line[0][0], line[0][1], line[1][0], line[1][1], line[2], line[3], line[4], line[5])
+			data.append((line[0][0], line[0][1], line[1][0], line[1][1], line[2], line[3], line[4], line[5]))
+	return data
+
+def printer(lines):
+	s = "x1, y1, x2, y2, d, a, t, dc\n"
+	for line in lines:
+		s += "%d, %d, %d, %d, %.3f, %.3f, %d, %.3f\n" % (line[0], line[1], line[2], line[3], line[4], line[5], line[6], line[7])
 	return s
 
 def countPositives(photos):

@@ -11,6 +11,7 @@ from util import countPositives
 from util import countMatchesByPair
 from util import countKeypointsByPhoto
 from util import processingTimeByPhoto
+from util import flatView
 
 path = sys.argv[1]
 rawFilesList = loadFiles(path)
@@ -22,7 +23,8 @@ detector = cv.ORB_create()
 
 matches_set = seekMatches(detector, matcher, filesList, path)
 filtered = basicFormater(matches_set)
-print printer(filtered)
+flat = flatView(filtered)
+print printer(flat)
 # print globalPrinter(matches_set, filesList, path)
 # print matchPrinter(filtered)
 
