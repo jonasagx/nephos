@@ -17,7 +17,10 @@ path = sys.argv[1]
 rawFilesList = loadFiles(path)
 filesList = validSerie(rawFilesList)
 
+print filesList
+
 matcher = cv.BFMatcher(crossCheck=True)
+# detector = cv.xfeatures2d.SURF_create()
 # detector = cv.xfeatures2d.SIFT_create()
 detector = cv.ORB_create()
 

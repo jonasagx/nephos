@@ -57,7 +57,7 @@ patch_template = ['http://satelite.cptec.inpe.br/repositorio5/goes13/goes13_web/
 'http://satelite.cptec.inpe.br/repositorio5/goes13/goes13_web/ne_infra_alta/{ano}/{mes}/S11235251_{ano}{mes}{dia}0000.jpg']
 
 def main():
-    ano, mes, dia = 2013, 2, 25
+    ano, mes, dia = 2015, 2, 25
     moment = date(ano, mes, dia)
 
     while(moment.month < 4):
@@ -66,7 +66,8 @@ def main():
 
             try:
                 urllib.request.urlretrieve(url, url.split('/')[9])
-                print(url.split('/')[9] + " -- " + moment.strftime("%d %m %Y"))
+                print url
+                # print(url.split('/')[9] + " -- " + moment.strftime("%d %m %Y"))
             except Exception:
                 print("404 HTTP " + url.split('/')[9])
         #Soma um dia ao valor da data
