@@ -1,4 +1,4 @@
-filename = "orb_vectors.csv"
+filename = "sift_vectors.csv"
 print(filename)
 library(cluster)
 
