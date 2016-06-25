@@ -17,8 +17,6 @@ dissE <- daisy(c)
 dE2 <- dissE^2
 sk <- silhouette(km$cl, dE2)
 
-summary(sk)
-
 vectors = data.frame()
 
 for (i in 1:length(c$x1)) {
@@ -28,13 +26,13 @@ for (i in 1:length(c$x1)) {
 	}
 }
 
-head(vectors, n=100)
+length(vectors$x1)
 
 chart = "vector_map.png"
 
 png(chart, width=500, height=500)
 
-plot(NA, xlim=c(0, 180), ylim=c(0, 180), main="Mapa de vetores de nuvens", xlab="x", ylab="y")
+plot(NA, xlim=c(0, 180), ylim=c(0, 180), main="ORB", xlab="x", ylab="y")
 arrows(vectors$x1, vectors$y1, vectors$x2, vectors$y2, length=0.09)
 
 dev.off()
