@@ -22,7 +22,7 @@ detector = cv.ORB_create()
 
 matches_set = seekMatches(detector, matcher, filesList, path)
 filtered = basicFormater(matches_set)
-print printer(filtered)
+print(printer(filtered))
 # print globalPrinter(matches_set, filesList, path)
 # print matchPrinter(filtered)
 

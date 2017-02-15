@@ -202,7 +202,7 @@ def createVisualMatch(im1, im2, detector, matcher):
 
 def seekMatches(detector, matcher, filesList, path):
 	trackSerie = {}
-	for index in xrange(len(filesList) - 1):
+	for index in range(len(filesList) - 1):
 		img1 = cv.imread(path + filesList[index], 0)
 		img2 = cv.imread(path + filesList[index + 1], 0)
 
