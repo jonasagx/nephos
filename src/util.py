@@ -1,4 +1,5 @@
 import os
+import csv
 import time
 import cv2 as cv
 from numpy import std
@@ -64,7 +65,7 @@ def filterDistances(trackSerie):
 	filtered = []
 	for key, track in trackSerie.items():
 		#Get list of distances
-		m = mean( [track['matches'][i].distance for i in xrange(len(track['matches']))] )
+		m = mean( [track['matches'][i].distance for i in range(len(track['matches']))] )
 		#print mean
 
 		for match in track['matches']:
@@ -206,7 +207,7 @@ def seekMatches(detector, matcher, filesList, path):
 		img1 = cv.imread(path + filesList[index], 0)
 		img2 = cv.imread(path + filesList[index + 1], 0)
 
-		if(img1 == None or img2 == None):
+		if(img1 is None or img2 is None):
 			continue
 		t11 = time.time()
 		(kp1, des1) = detector.detectAndCompute(img1, None)
@@ -220,7 +221,7 @@ def seekMatches(detector, matcher, filesList, path):
 		matches = matcher.match(des1, des2)
 		tm2 = time.time()
 
-		if(des1 == None or des2 == None):
+		if(des1 is None or des2 is None):
 			trackSerie[index] = {'matches': [],
 							  'kp1': [],
 							  'kp2': [],
@@ -242,3 +243,16 @@ def seekMatches(detector, matcher, filesList, path):
 							  'tm': tm2 - tm1
 							}
 	return trackSerie
+
+def saveToFile(filename, data):
+	directory = "data"
+
+	try:
+		if not os.path.exists(directory):
+			os.makedirs(directory)
+	except Exception as e:
+		pass
+
+	f = open(directory + "/" + filename, "w")
+	f.write(data)
+	f.close()
