@@ -48,14 +48,14 @@ def validSerie(filesList):
 		files.append(filesList[index])
 	return files
 
-def loadFiles(path):
+def loadFiles(path, fileExtention):
 	assert len(path) > 0, "Pass folder path as param"
 	if not path.endswith("/"):
 		path += "/"
 	filesList = os.listdir(path)
 	
 	for file in filesList:
-		if not file.endswith(".png"):
+		if not file.endswith(fileExtention):
 			filesList.remove(file)
 	
 	filesList.sort()
