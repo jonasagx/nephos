@@ -16,7 +16,7 @@ from util import processingTimeByPhoto
 
 def main():
 	path = sys.argv[1]
-	rawFilesList = loadFiles(path)
+	rawFilesList = loadFiles(path, ".png")
 	filesList = validSerie(rawFilesList)
 
 	matcher = cv.BFMatcher(crossCheck=True)
