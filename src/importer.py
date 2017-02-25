@@ -84,4 +84,4 @@ def main():
 	images = getCollection('localhost', 27017, "nephos-test", "images")
 	images.insert_many(imageBulk)
 
-main()
+# main()
