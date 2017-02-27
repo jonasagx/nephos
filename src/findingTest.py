@@ -5,10 +5,13 @@
 	show how many features were found from each picture
 '''
 
-import cv2 as cv
+
 import base64
 import pprint
+
+import cv2 as cv
 import numpy as np
+
 from pymongo import MongoClient
 
 class Algorithm:
@@ -46,9 +49,10 @@ def convertToImages(imagesFromDb):
 		cvImages.append(source)
 	return cvImages
 
-def runExperiment1(types):
+def runExperiment1(types, collection):
+	experimentResults = {}
 	for t in types:	
-		results = imagesCollection.find({"type":t})
+		results = collection.find({"type":t})
 		cvImages = convertToImages(results)
 		algorithms = []
 
@@ -56,11 +60,13 @@ def runExperiment1(types):
 		algorithms.append(Algorithm("SURF" + "_" + t, cv.xfeatures2d.SURF_create()))
 		algorithms.append(Algorithm("ORB" + "_" + t, cv.ORB_create()))
 
-		print(runSerieExtraction(cvImages, algorithms))
+		experimentResults.update(runSerieExtraction(cvImages, algorithms))
+	return experimentResults
 
 def main():
 	imagesCollection = getCollection('192.168.0.16', 27017, "nephos-test", "images")
 	
 	types = imagesCollection.find({}).distinct("type")
-	runExperiment1(types)
-main()
+	return runExperiment1(types, imagesCollection)
+
+experimentResults = main()
