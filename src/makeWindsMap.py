@@ -58,33 +58,45 @@ def runSerie(detector, matcher, docs):
 	return serieResult
 
 def extractVectors(matches, kp1, kp2):
-	vectors = []
+	X, Y, U, V = [], [], [], []
+
 	for match in matches:
 		i1, i2 = match.queryIdx, match.trainIdx
+		
 		p1 = kp1[i1].pt
 		p2 = kp2[i2].pt
-		size1 = kp1[i1].size
-		size2 = kp2[i2].size
-		angle1 = kp1[i1].angle
-		angle2 = kp2[i2].angle
+		
+		X.append(p1[0])
+		Y.append(p1[1])
+
+		U.append(p2[0])
+		V.append(p2[1])
+
+		# size1 = kp1[i1].size
+		# size2 = kp2[i2].size
+		# angle1 = kp1[i1].angle
+		# angle2 = kp2[i2].angle
 		# vectors.append((p1, p2, (size1, size2), (angle1, angle2)))
-		vectors.append((p1, p2))
-	return vectors
+		# vectors.append((p1, p2))
+	return [X, Y, U, V]
 
 def getImagesFromDB(collection, limit):
-	return collection.find({"type": "rb"}).sort("date", DESCENDING).limit(limit)
+	return collection.find({"type": "vis"}).sort("date", DESCENDING).limit(limit)
 
 def getImageDimessions(doc):
 	im = loadImage(doc.next())
 	return im.shape
 
-# def plotVectorMap(data, shape):
-# 	ax = plt.axes(shape)
+def plotVectorMap(data, title, index):
+	X, Y, U, V = data
 
-# 	for datum in data:
-# 		datum[]
-# 		ax.arrow(0, 0, 0.5, 0.5, head_width=0.01, head_length=0.01, fc='k', ec='k')
-# 	plt.show()
+	plt.title(title + " - " + str(index))
+	plt.quiver(X, Y, U, V, color='r')
+	plt.show()
+
+def plotSet(fieldSet, title):
+	for index, field in enumerate(fieldSet):
+		plotVectorMap(field, title, index)
 
 def runExperiment(collection):
 	matcher = cv.BFMatcher(crossCheck=True)
@@ -92,20 +104,14 @@ def runExperiment(collection):
 	surfDetector = cv.xfeatures2d.SURF_create()
 	orbDetector = cv.ORB_create()
 
-	imageDocs = getImagesFromDB(collection, 3)
+	imageDocs = getImagesFromDB(collection, 5)
 
-	# runSerie(siftDetector, matcher, imagesDb, "sift")
-	# runSerie(surfDetector, matcher, imagesDb, "surf")
-	orbVectors = runSerie(orbDetector, matcher, imageDocs)
+	# siftFields = runSerie(siftDetector, matcher, imageDocs)
+	surfFields = runSerie(surfDetector, matcher, imageDocs)
+	# orbFields = runSerie(orbDetector, matcher, imageDocs)
+	plotSet(surfFields, "SURF")
 
-	image = getImagesFromDB(collection, 1)
-	xMax, yMax = getImageDimessions(image)[:2]
-	plotDimensions = (0, 0, xMax, yMax)
-
-	print(plotDimensions)
-	# plotVectorMap(orbVectors, plotDimensions)
-
-	return orbVectors
+	return surfFields
 
 def main():
 	client = MongoClient('192.168.0.16', 27017)
@@ -120,4 +126,4 @@ def main():
 # Filter matches
 # plot map
 
-orbResults = main()
+surfFields = main()
