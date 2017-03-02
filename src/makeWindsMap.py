@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from base64 import b64decode
 from pymongo import DESCENDING
 from pymongo import MongoClient
+from scipy.spatial import distance
 
 from util import printer
 # from util import loadFiles
@@ -31,7 +32,6 @@ def loadImage(result):
 		return cvImage
 	else:
 		return None
-
 
 def getMatches(detector, matcher, img1, img2):
 	(kp1, des1) = detector.detectAndCompute(img1, None)
@@ -78,7 +78,11 @@ def extractVectors(matches, kp1, kp2):
 		# angle2 = kp2[i2].angle
 		# vectors.append((p1, p2, (size1, size2), (angle1, angle2)))
 		# vectors.append((p1, p2))
-	return [X, Y, U, V]
+	X = np.array(X)
+	Y = np.array(Y)
+	U = np.array(U)
+	V = np.array(V)
+	return np.array([X, Y, U, V])
 
 def getImagesFromDB(collection, limit):
 	return collection.find({"type": "vis"}).sort("date", DESCENDING).limit(limit)
@@ -104,7 +108,7 @@ def runExperiment(collection):
 	surfDetector = cv.xfeatures2d.SURF_create()
 	orbDetector = cv.ORB_create()
 
-	imageDocs = getImagesFromDB(collection, 5)
+	imageDocs = getImagesFromDB(collection, 2)
 
 	# siftFields = runSerie(siftDetector, matcher, imageDocs)
 	surfFields = runSerie(surfDetector, matcher, imageDocs)
@@ -115,7 +119,7 @@ def runExperiment(collection):
 
 def main():
 	client = MongoClient('192.168.0.16', 27017)
-	imagesCollection = client["nephos-test"]["images"]
+	imagesCollection = client["nephos-comparation"]["images"]
 	results = runExperiment(imagesCollection)
 
 	client.close()
@@ -127,3 +131,11 @@ def main():
 # plot map
 
 surfFields = main()
+
+def getDistancesFromSerie(serie):
+	ds = []
+
+	for x1, y1, x2, y2 in serie:
+		d = distance.euclidian((x1, y1),(x2, y2))
+		ds.append(d)
+	return distances
