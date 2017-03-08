@@ -30,7 +30,7 @@ def loadFiles(path, fileExtention):
 
 def getCollection(host, port, dbName, collectionName):
 	client = MongoClient(host, port)
-	return client[dbName][collectionName]
+	return (client, client[dbName][collectionName])
 
 def getDate(stringDate):
 	year = int(stringDate[:4])
@@ -71,6 +71,7 @@ def main():
 
 	for filename in filesList:
 		# load image
+		print(filename)
 		im = Image.open(path + filename)
 		
 		# crop it
@@ -81,7 +82,8 @@ def main():
 		imDoc = getImageDoc(filename, temFile)
 		imageBulk.append(imDoc)
 
-	images = getCollection('localhost', 27017, "nephos-test", "images")
+	cli, images = getCollection('localhost', 27017, "nephos-comparation", "images")
 	images.insert_many(imageBulk)
+	cli.close()
 
-# main()
+main()

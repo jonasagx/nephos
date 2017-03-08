@@ -49,7 +49,7 @@ def convertToImages(imagesFromDb):
 		cvImages.append(source)
 	return cvImages
 
-def runExperiment1(types, collection):
+def runExperiment(types, collection):
 	experimentResults = {}
 	for t in types:	
 		results = collection.find({"type":t})
@@ -67,6 +67,6 @@ def main():
 	imagesCollection = getCollection('192.168.0.16', 27017, "nephos-test", "images")
 	
 	types = imagesCollection.find({}).distinct("type")
-	return runExperiment1(types, imagesCollection)
+	return runExperiment(types, imagesCollection)
 
 experimentResults = main()
