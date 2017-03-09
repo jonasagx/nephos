@@ -5,23 +5,36 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 
+from scipy import ndimage
 from base64 import b64decode
 from pymongo import DESCENDING
 from pymongo import MongoClient
 from scipy.spatial import distance
 
-from util import printer
+# from util import printer
 # from util import loadFiles
 from util import saveToFile
 # from util import validSerie
 # from util import seekMatches
-from util import matchPrinter
-from util import basicFormater
-from util import globalPrinter
-from util import countPositives
-from util import countMatchesByPair
-from util import countKeypointsByPhoto
-from util import processingTimeByPhoto
+# from util import matchPrinter
+# from util import basicFormater
+# from util import globalPrinter
+# from util import countPositives
+# from util import countMatchesByPair
+# from util import countKeypointsByPhoto
+# from util import processingTimeByPhoto
+
+class Detector:
+	def __init__(self):
+		pass
+
+	def detectAndCompute(self, im, noneValue):
+		pass
+
+class NegriDetector(Detector):
+	def detectAndCompute(self, im, noneValue):
+		labelObjects, number_of_objects = ndimage.label(im)
+		areasOfInterest = ndimage.find_objects(labelObjects)
 
 def loadImage(result):
 	if result.get("image64") is not None:
@@ -72,12 +85,6 @@ def extractVectors(matches, kp1, kp2):
 		U.append(p2[0])
 		V.append(p2[1])
 
-		# size1 = kp1[i1].size
-		# size2 = kp2[i2].size
-		# angle1 = kp1[i1].angle
-		# angle2 = kp2[i2].angle
-		# vectors.append((p1, p2, (size1, size2), (angle1, angle2)))
-		# vectors.append((p1, p2))
 	X = np.array(X)
 	Y = np.array(Y)
 	U = np.array(U)
@@ -102,13 +109,18 @@ def plotSet(fieldSet, title):
 	for index, field in enumerate(fieldSet):
 		plotVectorMap(field, title, index)
 
-def runExperiment(collection):
+def getNegriDetector():
+	# Ideia to reproduce Negri method to recognize similar matrices
+
+def runExperiment(collection, serieSize):
 	matcher = cv.BFMatcher(crossCheck=True)
 	siftDetector = cv.xfeatures2d.SIFT_create()
 	surfDetector = cv.xfeatures2d.SURF_create()
 	orbDetector = cv.ORB_create()
 
-	imageDocs = getImagesFromDB(collection, 2)
+	negriDetector = getNegriDetector()
+
+	imageDocs = getImagesFromDB(collection, serieSize)
 
 	# siftFields = runSerie(siftDetector, matcher, imageDocs)
 	surfFields = runSerie(surfDetector, matcher, imageDocs)
@@ -120,7 +132,7 @@ def runExperiment(collection):
 def main():
 	client = MongoClient('192.168.0.16', 27017)
 	imagesCollection = client["nephos-comparation"]["images"]
-	results = runExperiment(imagesCollection)
+	results = runExperiment(imagesCollection, 2)
 
 	client.close()
 	return results
