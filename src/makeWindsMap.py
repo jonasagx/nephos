@@ -11,19 +11,6 @@ from pymongo import DESCENDING
 from pymongo import MongoClient
 from scipy.spatial import distance
 
-# from util import printer
-# from util import loadFiles
-from util import saveToFile
-# from util import validSerie
-# from util import seekMatches
-# from util import matchPrinter
-# from util import basicFormater
-# from util import globalPrinter
-# from util import countPositives
-# from util import countMatchesByPair
-# from util import countKeypointsByPhoto
-# from util import processingTimeByPhoto
-
 class Detector:
 	def __init__(self):
 		pass
@@ -31,10 +18,79 @@ class Detector:
 	def detectAndCompute(self, im, noneValue):
 		pass
 
+class KeyPoint:
+	def __init__(self, x, y, size):
+		self.pt = [x, y]
+		self.size = size
+
 class NegriDetector(Detector):
+	def __init__(self, min, max, window):
+		# grayscale threshold
+		self.min = min
+		self.max = max
+
+		# feature window dimensions
+		assert (window[0] % 2 == 0 and window[1] % 2 == 0), "Dimensions should both be even"
+		self.window = window
+
+	# Retuns keypoints and descriptor
 	def detectAndCompute(self, im, noneValue):
-		labelObjects, number_of_objects = ndimage.label(im)
-		areasOfInterest = ndimage.find_objects(labelObjects)
+		keypoints, descriptors = [], []
+
+		X, Y = im.shape
+		
+		for i in range(X):
+			for j in range(Y):
+				if self.isInRange(im.item(i, j)):
+					feature = self.takeFeature(im, i, j)
+					descriptors.append(feature)
+					keypoints.append(KeyPoint(i, j, self.min))
+
+		return (keypoints, descriptors)
+
+	def takeFeature(self, im, i, j):
+		xw0 = i - self.window[0]/2
+		yw0 = j - self.window[1]/2
+		
+		xw1 = i + self.window[0]/2
+		yw1 = j + self.window[1]/2
+
+		xw0, yw0, xw1, yw1 = self.checkFeatureWindow(xw0, yw0, xw1, yw1, im)
+
+		return im[xw0:xw1, yw0:yw1]
+
+	def checkFeatureWindow(self, xw0, yw0, xw1, yw1, im):
+		mx, my = im.shape
+
+		imageArea = mx * my
+		featureArea = self.window[0] * self.window[1]
+
+		if (imageArea > featureArea):
+		  raise Exception("The feature is to big to fit in the image")
+
+		if 0 < xw0:
+			xw1 += abs(xw0)
+			xw0 = 0
+
+		if mx < xw1:
+			xw0 -= xw1 - mx
+			xw1 = mx - 1
+
+		if 0 < yw0:
+			yw1 += abs(yw0)
+			yw0 = 0
+
+		if my < yw1:
+			yw0 -= yw1 - my
+			yw1 = my - 1
+
+		return (xw0, yw0, xw1, yw1)
+
+	def isInRange(self, value):
+		if self.min < value < self.max:
+			return True
+		else:
+			return False
 
 def loadImage(result):
 	if result.get("image64") is not None:
@@ -111,6 +167,7 @@ def plotSet(fieldSet, title):
 
 def getNegriDetector():
 	# Ideia to reproduce Negri method to recognize similar matrices
+	pass
 
 def runExperiment(collection, serieSize):
 	matcher = cv.BFMatcher(crossCheck=True)
@@ -143,11 +200,3 @@ def main():
 # plot map
 
 surfFields = main()
-
-def getDistancesFromSerie(serie):
-	ds = []
-
-	for x1, y1, x2, y2 in serie:
-		d = distance.euclidian((x1, y1),(x2, y2))
-		ds.append(d)
-	return distances
