@@ -24,73 +24,88 @@ class KeyPoint:
 		self.size = size
 
 class NegriDetector(Detector):
-	def __init__(self, min, max, window):
+	def __init__(self, min, max, featureXsize, featureYsize):
 		# grayscale threshold
 		self.min = min
 		self.max = max
 
 		# feature window dimensions
-		assert (window[0] % 2 == 0 and window[1] % 2 == 0), "Dimensions should both be even"
-		self.window = window
+		if not (featureXsize % 2 == 0 and featureYsize % 2 == 0):
+			raise Exception("Dimensions should both be even")
+
+		self.featureXsize = featureYsize
+		self.featureYsize = featureYsize
+
+	def prepareImage(self, im):
+		grey = cv.cvtColor(im, cv.COLOR_RGB2GRAY)
+		ret, th1 = cv.threshold(grey, self.min, self.max, cv.THRESH_BINARY)
+		return th1
 
 	# Retuns keypoints and descriptor
 	def detectAndCompute(self, im, noneValue):
-		keypoints, descriptors = [], []
+		grey = self.prepareImage(im)
+		mx, my = grey.shape
+		imageArea = mx * my
+		featureArea = self.featureXsize * self.featureYsize
 
-		X, Y = im.shape
+		if (imageArea < featureArea):
+		  raise Exception("The feature is too big to fit in the image", imageArea, featureArea)
+
+		keypoints, descriptors = [], []
+		X, Y = grey.shape
 		
 		for i in range(X):
 			for j in range(Y):
-				if self.isInRange(im.item(i, j)):
-					feature = self.takeFeature(im, i, j)
+				if grey.item(i, j) == 255:
+					feature = self.takeFeature(grey, i, j)
 					descriptors.append(feature)
 					keypoints.append(KeyPoint(i, j, self.min))
 
 		return (keypoints, descriptors)
 
 	def takeFeature(self, im, i, j):
-		xw0 = i - self.window[0]/2
-		yw0 = j - self.window[1]/2
-		
-		xw1 = i + self.window[0]/2
-		yw1 = j + self.window[1]/2
+		xw0, yw0, xw1, yw1 = self.checkFeatureWindow(i, j, im)
 
-		xw0, yw0, xw1, yw1 = self.checkFeatureWindow(xw0, yw0, xw1, yw1, im)
+		feature = im[xw0:xw1, yw0:yw1]
+		im[xw0:xw1, yw0:yw1] = 0
+		return feature
 
-		return im[xw0:xw1, yw0:yw1]
-
-	def checkFeatureWindow(self, xw0, yw0, xw1, yw1, im):
+	def checkFeatureWindow(self, i, j, im):
 		mx, my = im.shape
 
-		imageArea = mx * my
-		featureArea = self.window[0] * self.window[1]
+		xw0 = i - self.featureXsize/2
+		yw0 = j - self.featureYsize/2
+		
+		xw1 = i + self.featureXsize/2
+		yw1 = j + self.featureYsize/2
 
-		if (imageArea > featureArea):
-		  raise Exception("The feature is to big to fit in the image")
-
-		if 0 < xw0:
-			xw1 += abs(xw0)
+		if xw0 < 0:
 			xw0 = 0
+			xw1 = self.featureXsize
 
-		if mx < xw1:
+		if xw1 > mx:
 			xw0 -= xw1 - mx
 			xw1 = mx - 1
 
-		if 0 < yw0:
-			yw1 += abs(yw0)
+		if yw0 < 0:
 			yw0 = 0
+			yw1 = self.featureYsize
 
 		if my < yw1:
 			yw0 -= yw1 - my
 			yw1 = my - 1
 
-		return (xw0, yw0, xw1, yw1)
+		featurePoints = [xw0, yw0, xw1, yw1]
+		featurePoints = [int(value) for value in featurePoints]
+		return featurePoints
 
-	def isInRange(self, value):
-		if self.min < value < self.max:
-			return True
-		else:
-			return False
+class NegriMatcher:
+	def match(descriptors1, descriptors2):
+		
+		
+		for index, des1 in enumerate(descriptors1):
+			for index, des2 in enumerate(descriptors2):
+
 
 def loadImage(result):
 	if result.get("image64") is not None:
@@ -167,24 +182,31 @@ def plotSet(fieldSet, title):
 
 def getNegriDetector():
 	# Ideia to reproduce Negri method to recognize similar matrices
+	return NegriDetector(85, 255, 6, 6)
+
+def getNegriMatcher():
 	pass
 
 def runExperiment(collection, serieSize):
-	matcher = cv.BFMatcher(crossCheck=True)
-	siftDetector = cv.xfeatures2d.SIFT_create()
-	surfDetector = cv.xfeatures2d.SURF_create()
-	orbDetector = cv.ORB_create()
+	# matcher = cv.BFMatcher(crossCheck=True)
+	# siftDetector = cv.xfeatures2d.SIFT_create()
+	# surfDetector = cv.xfeatures2d.SURF_create()
+	# orbDetector = cv.ORB_create()
 
 	negriDetector = getNegriDetector()
+	negriMatcher = getNegriMatcher()
 
 	imageDocs = getImagesFromDB(collection, serieSize)
 
+	negriFields = runSerie(negriDetector, negriMatcher, imageDocs)
 	# siftFields = runSerie(siftDetector, matcher, imageDocs)
-	surfFields = runSerie(surfDetector, matcher, imageDocs)
-	# orbFields = runSerie(orbDetector, matcher, imageDocs)
-	plotSet(surfFields, "SURF")
+	# surfFields = runSerie(surfDetector, matcher, imageDocs)
 
-	return surfFields
+	# orbMatcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+	# orbFields = runSerie(orbDetector, orbMatcher, imageDocs)
+	# plotSet(surfFields, "SURF")
+
+	return None
 
 def main():
 	client = MongoClient('192.168.0.16', 27017)
