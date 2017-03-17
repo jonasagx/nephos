@@ -10,6 +10,7 @@ from base64 import b64decode
 from pymongo import DESCENDING
 from pymongo import MongoClient
 from scipy.spatial import distance
+from scipy.stats import pearsonr
 
 class Detector:
 	def __init__(self):
@@ -22,6 +23,12 @@ class KeyPoint:
 	def __init__(self, x, y, size):
 		self.pt = [x, y]
 		self.size = size
+
+	def __str__(self):
+		return str(self.pt[0]) + " " + str(self.pt[1])
+
+	def __repr__(self):
+		return self.__str__()
 
 class NegriDetector(Detector):
 	def __init__(self, min, max, featureXsize, featureYsize):
@@ -39,6 +46,7 @@ class NegriDetector(Detector):
 	def prepareImage(self, im):
 		grey = cv.cvtColor(im, cv.COLOR_RGB2GRAY)
 		ret, th1 = cv.threshold(grey, self.min, self.max, cv.THRESH_BINARY)
+		# th1 = im[:,:,0]
 		return th1
 
 	# Retuns keypoints and descriptor
@@ -54,8 +62,11 @@ class NegriDetector(Detector):
 		keypoints, descriptors = [], []
 		X, Y = grey.shape
 		
-		for i in range(X):
-			for j in range(Y):
+		xStep = int(self.featureXsize/2)
+		yStep = int(self.featureYsize/2)
+
+		for i in range(0, X, xStep):
+			for j in range(0, Y, yStep):
 				if grey.item(i, j) == 255:
 					feature = self.takeFeature(grey, i, j)
 					descriptors.append(feature)
@@ -67,7 +78,11 @@ class NegriDetector(Detector):
 		xw0, yw0, xw1, yw1 = self.checkFeatureWindow(i, j, im)
 
 		feature = im[xw0:xw1, yw0:yw1]
-		im[xw0:xw1, yw0:yw1] = 0
+
+		if feature.shape != (self.featureXsize, self.featureYsize):
+			raise Exception((xw0, yw0, xw1, yw1), feature.shape)
+
+		# im[xw0:xw1, yw0:yw1] = 0
 		return feature
 
 	def checkFeatureWindow(self, i, j, im):
@@ -84,28 +99,45 @@ class NegriDetector(Detector):
 			xw1 = self.featureXsize
 
 		if xw1 > mx:
-			xw0 -= xw1 - mx
-			xw1 = mx - 1
+			xw0 = xw0 - (xw1 - mx)
+			xw1 = mx
 
 		if yw0 < 0:
 			yw0 = 0
 			yw1 = self.featureYsize
 
-		if my < yw1:
-			yw0 -= yw1 - my
-			yw1 = my - 1
+		if yw1 > my:
+			yw0 = yw0 - (yw1 - my)
+			yw1 = my
 
 		featurePoints = [xw0, yw0, xw1, yw1]
 		featurePoints = [int(value) for value in featurePoints]
 		return featurePoints
 
 class NegriMatcher:
-	def match(descriptors1, descriptors2):
-		
-		
-		for index, des1 in enumerate(descriptors1):
-			for index, des2 in enumerate(descriptors2):
+	def match(self, descriptors1, descriptors2):
+		#Correlation coefs in matrix structure
+		corrCoef = self.getCorrCoefs(descriptors1, descriptors2)
 
+		self.plotMatrix(corrCoef)
+		#Cross filter results
+
+	def findBestMatch(self, corrMatrix):
+		pass
+
+	def plotMatrix(self, matrix):
+		plt.imshow(matrix)
+		plt.show()
+
+	def getCorrCoefs(self, descriptors1, descriptors2):
+		corrCoef, row = [], []
+		for des1 in descriptors1:
+			for des2 in descriptors2:
+				coef, pValue = pearsonr(des1.flatten(), des2.flatten())
+				row.append(coef)
+			corrCoef.append(row)
+			row = []
+		return corrCoef
 
 def loadImage(result):
 	if result.get("image64") is not None:
@@ -182,10 +214,10 @@ def plotSet(fieldSet, title):
 
 def getNegriDetector():
 	# Ideia to reproduce Negri method to recognize similar matrices
-	return NegriDetector(85, 255, 6, 6)
+	return NegriDetector(85, 255, 50, 50)
 
 def getNegriMatcher():
-	pass
+	return NegriMatcher()
 
 def runExperiment(collection, serieSize):
 	# matcher = cv.BFMatcher(crossCheck=True)
