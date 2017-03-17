@@ -12,12 +12,10 @@ from pymongo import MongoClient
 from scipy.spatial import distance
 from scipy.stats import pearsonr
 
-class Detector:
-	def __init__(self):
-		pass
-
-	def detectAndCompute(self, im, noneValue):
-		pass
+class Match:
+	def __init__(self, queryIdx, trainIdx):
+		self.queryIdx = queryIdx
+		self.trainIdx = trainIdx
 
 class KeyPoint:
 	def __init__(self, x, y, size):
@@ -30,7 +28,7 @@ class KeyPoint:
 	def __repr__(self):
 		return self.__str__()
 
-class NegriDetector(Detector):
+class NegriDetector:
 	def __init__(self, min, max, featureXsize, featureYsize):
 		# grayscale threshold
 		self.min = min
@@ -62,8 +60,8 @@ class NegriDetector(Detector):
 		keypoints, descriptors = [], []
 		X, Y = grey.shape
 		
-		xStep = int(self.featureXsize/2)
-		yStep = int(self.featureYsize/2)
+		xStep = int(10)
+		yStep = int(10)
 
 		for i in range(0, X, xStep):
 			for j in range(0, Y, yStep):
@@ -117,13 +115,21 @@ class NegriDetector(Detector):
 class NegriMatcher:
 	def match(self, descriptors1, descriptors2):
 		#Correlation coefs in matrix structure
-		corrCoef = self.getCorrCoefs(descriptors1, descriptors2)
+		corrMatrix = self.getCorrCoefs(descriptors1, descriptors2)
 
-		self.plotMatrix(corrCoef)
 		#Cross filter results
+		self.plotMatrix(corrMatrix)
+		return self.findBestMatches(corrMatrix)
 
-	def findBestMatch(self, corrMatrix):
-		pass
+	def findBestMatches(self, corrMatrix):
+		matches = []
+		for index, row in enumerate(corrMatrix):
+			j, value = max( [(i, v) for i, v in enumerate(row)] )
+
+			if row.count(value) == 1:
+				matches.append( Match(index, j))
+
+		return matches
 
 	def plotMatrix(self, matrix):
 		plt.imshow(matrix)
@@ -134,8 +140,10 @@ class NegriMatcher:
 		for des1 in descriptors1:
 			for des2 in descriptors2:
 				coef, pValue = pearsonr(des1.flatten(), des2.flatten())
+				# coef = np.sum((des1 - des2)**2)
 				row.append(coef)
 			corrCoef.append(row)
+			# print(row)
 			row = []
 		return corrCoef
 
@@ -158,7 +166,7 @@ def getMatches(detector, matcher, img1, img2):
 
 def runSerie(detector, matcher, docs):
 	serieResult = []
-
+	docs.rewind()
 	totalDocs = docs.count(True)
 
 	if totalDocs <= 0:
@@ -214,16 +222,16 @@ def plotSet(fieldSet, title):
 
 def getNegriDetector():
 	# Ideia to reproduce Negri method to recognize similar matrices
-	return NegriDetector(85, 255, 50, 50)
+	return NegriDetector(80, 255, 24, 24)
 
 def getNegriMatcher():
 	return NegriMatcher()
 
 def runExperiment(collection, serieSize):
-	# matcher = cv.BFMatcher(crossCheck=True)
+	matcher = cv.BFMatcher(crossCheck=True)
 	# siftDetector = cv.xfeatures2d.SIFT_create()
 	# surfDetector = cv.xfeatures2d.SURF_create()
-	# orbDetector = cv.ORB_create()
+	orbDetector = cv.ORB_create()
 
 	negriDetector = getNegriDetector()
 	negriMatcher = getNegriMatcher()
@@ -234,11 +242,12 @@ def runExperiment(collection, serieSize):
 	# siftFields = runSerie(siftDetector, matcher, imageDocs)
 	# surfFields = runSerie(surfDetector, matcher, imageDocs)
 
-	# orbMatcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-	# orbFields = runSerie(orbDetector, orbMatcher, imageDocs)
-	# plotSet(surfFields, "SURF")
+	orbMatcher = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
+	orbFields = runSerie(orbDetector, orbMatcher, imageDocs)
+	plotSet(negriFields, "NEGRI")
+	plotSet(orbFields, "ORB")
 
-	return None
+	return {"negri": negriFields, "orb": orbFields}
 
 def main():
 	client = MongoClient('192.168.0.16', 27017)
@@ -253,4 +262,4 @@ def main():
 # Filter matches
 # plot map
 
-surfFields = main()
+results = main()
