@@ -33,6 +33,8 @@ class NegriDetector:
 		# grayscale threshold
 		self.min = min
 		self.max = max
+		self.xStep = int(featureXsize * 0.3)
+		self.yStep = int(featureYsize * 0.3)
 
 		# feature window dimensions
 		if not (featureXsize % 2 == 0 and featureYsize % 2 == 0):
@@ -59,13 +61,10 @@ class NegriDetector:
 
 		keypoints, descriptors = [], []
 		X, Y = grey.shape
-		
-		xStep = int(10)
-		yStep = int(10)
 
-		for i in range(0, X, xStep):
-			for j in range(0, Y, yStep):
-				if grey.item(i, j) == 255:
+		for i in range(0, X, self.xStep):
+			for j in range(0, Y, self.yStep):
+				if grey.item(i, j) == self.max:
 					feature = self.takeFeature(grey, i, j)
 					descriptors.append(feature)
 					keypoints.append(KeyPoint(i, j, self.min))
