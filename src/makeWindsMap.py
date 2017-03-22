@@ -17,6 +17,12 @@ class Match:
 		self.queryIdx = queryIdx
 		self.trainIdx = trainIdx
 
+	def __str__(self):
+		return str(self.queryIdx) + " " + str(self.trainIdx)
+
+	def __repr__(self):
+		return self.__str__()
+
 class KeyPoint:
 	def __init__(self, x, y, size):
 		self.pt = [x, y]
@@ -29,12 +35,17 @@ class KeyPoint:
 		return self.__str__()
 
 class NegriDetector:
+	percentage = 0.3
 	def __init__(self, min, max, featureXsize, featureYsize):
 		# grayscale threshold
 		self.min = min
 		self.max = max
-		self.xStep = int(featureXsize * 0.3)
-		self.yStep = int(featureYsize * 0.3)
+
+		self.checkStepSize(featureXsize)
+		self.checkStepSize(featureYsize)
+
+		self.xStep = int(featureXsize * self.percentage)
+		self.yStep = int(featureYsize * self.percentage)
 
 		# feature window dimensions
 		if not (featureXsize % 2 == 0 and featureYsize % 2 == 0):
@@ -43,15 +54,22 @@ class NegriDetector:
 		self.featureXsize = featureYsize
 		self.featureYsize = featureYsize
 
+	def checkStepSize(self, featureSize):
+		step = int(featureSize * self.percentage)
+		if step <= 0:
+			raise Exception("Step must be an Integer bigger than zero. Received: ", step)
+
 	def prepareImage(self, im):
 		grey = cv.cvtColor(im, cv.COLOR_RGB2GRAY)
 		ret, th1 = cv.threshold(grey, self.min, self.max, cv.THRESH_BINARY)
 		# th1 = im[:,:,0]
+		# self.plotMatrix(th1)
 		return th1
 
 	# Retuns keypoints and descriptor
 	def detectAndCompute(self, im, noneValue):
 		grey = self.prepareImage(im)
+		
 		mx, my = grey.shape
 		imageArea = mx * my
 		featureArea = self.featureXsize * self.featureYsize
@@ -67,22 +85,19 @@ class NegriDetector:
 				if grey.item(i, j) == self.max:
 					feature = self.takeFeature(grey, i, j)
 					descriptors.append(feature)
-					keypoints.append(KeyPoint(i, j, self.min))
+					keypoints.append(KeyPoint(j, i, self.min))
 
 		return (keypoints, descriptors)
 
 	def takeFeature(self, im, i, j):
-		xw0, yw0, xw1, yw1 = self.checkFeatureWindow(i, j, im)
-
+		xw0, yw0, xw1, yw1 = self.getFeatureWindow(i, j, im)
 		feature = im[xw0:xw1, yw0:yw1]
 
 		if feature.shape != (self.featureXsize, self.featureYsize):
 			raise Exception((xw0, yw0, xw1, yw1), feature.shape)
-
-		# im[xw0:xw1, yw0:yw1] = 0
 		return feature
 
-	def checkFeatureWindow(self, i, j, im):
+	def getFeatureWindow(self, i, j, im):
 		mx, my = im.shape
 
 		xw0 = i - self.featureXsize/2
@@ -111,6 +126,10 @@ class NegriDetector:
 		featurePoints = [int(value) for value in featurePoints]
 		return featurePoints
 
+	def plotMatrix(self, matrix):
+		plt.imshow(matrix)
+		plt.show()
+
 class NegriMatcher:
 	def match(self, descriptors1, descriptors2):
 		#Correlation coefs in matrix structure
@@ -123,12 +142,23 @@ class NegriMatcher:
 	def findBestMatches(self, corrMatrix):
 		matches = []
 		for index, row in enumerate(corrMatrix):
-			j, value = max( [(i, v) for i, v in enumerate(row)] )
+			# j, value = max( [(i, v) for i, v in enumerate(row)] )
+			maxRowIndex, maxFromRow = self.getMaxAndIndex(row)
 
-			if row.count(value) == 1:
-				matches.append( Match(index, j))
+			column = [c[maxRowIndex] for c in corrMatrix]
+			maxColumnIndex, maxFromColumn = self.getMaxAndIndex(column)
+
+			if maxFromRow == maxFromColumn:
+				m = Match(maxColumnIndex, maxRowIndex)
+				matches.append(m)
 
 		return matches
+
+	def getMaxAndIndex(self, array):
+		maxValue = max(array)
+		maxIndex = array.index(maxValue)
+
+		return (maxIndex, maxValue)
 
 	def plotMatrix(self, matrix):
 		plt.imshow(matrix)
@@ -151,7 +181,7 @@ def loadImage(result):
 		img = b64decode(result['image64'])
 		npimg = np.fromstring(img, dtype=np.uint8) 
 		cvImage = cv.imdecode(npimg, 1)
-		print(result['date'])
+		# print(result['date'])
 		return cvImage
 	else:
 		return None
@@ -184,10 +214,10 @@ def extractVectors(matches, kp1, kp2):
 	X, Y, U, V = [], [], [], []
 
 	for match in matches:
-		i1, i2 = match.queryIdx, match.trainIdx
+		queryId, trainId = match.queryIdx, match.trainIdx
 		
-		p1 = kp1[i1].pt
-		p2 = kp2[i2].pt
+		p1 = kp1[queryId].pt
+		p2 = kp2[trainId].pt
 		
 		X.append(p1[0])
 		Y.append(p1[1])
@@ -195,10 +225,6 @@ def extractVectors(matches, kp1, kp2):
 		U.append(p2[0])
 		V.append(p2[1])
 
-	X = np.array(X)
-	Y = np.array(Y)
-	U = np.array(U)
-	V = np.array(V)
 	return np.array([X, Y, U, V])
 
 def getImagesFromDB(collection, limit):
@@ -212,7 +238,8 @@ def plotVectorMap(data, title, index):
 	X, Y, U, V = data
 
 	plt.title(title + " - " + str(index))
-	plt.quiver(X, Y, U, V, color='r')
+	plt.quiver(X, Y, U, V, units='xy')
+	plt.savefig(title + "_" + str(index) + ".png", dpi = 600)
 	plt.show()
 
 def plotSet(fieldSet, title):
@@ -221,15 +248,15 @@ def plotSet(fieldSet, title):
 
 def getNegriDetector():
 	# Ideia to reproduce Negri method to recognize similar matrices
-	return NegriDetector(80, 255, 24, 24)
+	return NegriDetector(70, 255, 24, 24)
 
 def getNegriMatcher():
 	return NegriMatcher()
 
 def runExperiment(collection, serieSize):
 	matcher = cv.BFMatcher(crossCheck=True)
-	# siftDetector = cv.xfeatures2d.SIFT_create()
-	# surfDetector = cv.xfeatures2d.SURF_create()
+	siftDetector = cv.xfeatures2d.SIFT_create()
+	surfDetector = cv.xfeatures2d.SURF_create()
 	orbDetector = cv.ORB_create()
 
 	negriDetector = getNegriDetector()
@@ -237,21 +264,29 @@ def runExperiment(collection, serieSize):
 
 	imageDocs = getImagesFromDB(collection, serieSize)
 
-	negriFields = runSerie(negriDetector, negriMatcher, imageDocs)
+	# negriFields = runSerie(negriDetector, negriMatcher, imageDocs)
 	# siftFields = runSerie(siftDetector, matcher, imageDocs)
-	# surfFields = runSerie(surfDetector, matcher, imageDocs)
+	surfFields = runSerie(surfDetector, matcher, imageDocs)
 
 	orbMatcher = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
 	orbFields = runSerie(orbDetector, orbMatcher, imageDocs)
-	plotSet(negriFields, "NEGRI")
+	# plotSet(negriFields, "NEGRI")
 	plotSet(orbFields, "ORB")
+	plotSet(surfFields, "SURF")
+	# plotSet(siftFields, "SIFT")
 
-	return {"negri": negriFields, "orb": orbFields}
+	return {
+		# "negri": negriFields, 
+		"orb": orbFields, 
+		"surf": surfFields, 
+		# "sift": siftFields
+	}
 
 def main():
+	# client = MongoClient('192.168.0.16', 27017)
 	client = MongoClient('192.168.0.16', 27017)
 	imagesCollection = client["nephos-comparation"]["images"]
-	results = runExperiment(imagesCollection, 2)
+	results = runExperiment(imagesCollection, 15)
 
 	client.close()
 	return results
