@@ -1,5 +1,6 @@
 import sys
 import csv
+import datetime
 
 import cv2 as cv
 import numpy as np
@@ -11,6 +12,25 @@ from pymongo import DESCENDING
 from pymongo import MongoClient
 from scipy.spatial import distance
 from scipy.stats import pearsonr
+
+class Serie:
+	def __init__(self, field, dates, types, algorithmName):
+		self.field = field
+		self.dates = dates
+		self.types = types
+		self.algorithmName = algorithmName
+
+	def getPrettyTitle(self):
+		title = self.timestamp2StringDate(self.dates[0])
+		title += "-" + self.timestamp2StringDate(self.dates[1])
+		title += " " + self.types[0]
+		title += "-" + self.types[0]
+		title += " " + self.algorithmName
+		return title
+
+	def timestamp2StringDate(self, timestamp):
+		date = datetime.datetime.fromtimestamp(timestamp)
+		return date.strftime('%d-%m-%Y %H:%M')
 
 class Match:
 	def __init__(self, queryIdx, trainIdx):
@@ -62,8 +82,6 @@ class NegriDetector:
 	def prepareImage(self, im):
 		grey = cv.cvtColor(im, cv.COLOR_RGB2GRAY)
 		ret, th1 = cv.threshold(grey, self.min, self.max, cv.THRESH_BINARY)
-		# th1 = im[:,:,0]
-		# self.plotMatrix(th1)
 		return th1
 
 	# Retuns keypoints and descriptor
@@ -126,23 +144,18 @@ class NegriDetector:
 		featurePoints = [int(value) for value in featurePoints]
 		return featurePoints
 
-	def plotMatrix(self, matrix):
-		plt.imshow(matrix)
-		plt.show()
-
 class NegriMatcher:
 	def match(self, descriptors1, descriptors2):
 		#Correlation coefs in matrix structure
 		corrMatrix = self.getCorrCoefs(descriptors1, descriptors2)
 
 		#Cross filter results
-		self.plotMatrix(corrMatrix)
+		# self.plotMatrix(corrMatrix)
 		return self.findBestMatches(corrMatrix)
 
 	def findBestMatches(self, corrMatrix):
 		matches = []
 		for index, row in enumerate(corrMatrix):
-			# j, value = max( [(i, v) for i, v in enumerate(row)] )
 			maxRowIndex, maxFromRow = self.getMaxAndIndex(row)
 
 			column = [c[maxRowIndex] for c in corrMatrix]
@@ -160,16 +173,11 @@ class NegriMatcher:
 
 		return (maxIndex, maxValue)
 
-	def plotMatrix(self, matrix):
-		plt.imshow(matrix)
-		plt.show()
-
 	def getCorrCoefs(self, descriptors1, descriptors2):
 		corrCoef, row = [], []
 		for des1 in descriptors1:
 			for des2 in descriptors2:
 				coef, pValue = pearsonr(des1.flatten(), des2.flatten())
-				# coef = np.sum((des1 - des2)**2)
 				row.append(coef)
 			corrCoef.append(row)
 			# print(row)
@@ -181,7 +189,6 @@ def loadImage(result):
 		img = b64decode(result['image64'])
 		npimg = np.fromstring(img, dtype=np.uint8) 
 		cvImage = cv.imdecode(npimg, 1)
-		# print(result['date'])
 		return cvImage
 	else:
 		return None
@@ -193,7 +200,7 @@ def getMatches(detector, matcher, img1, img2):
 
 	return extractVectors(matches, kp1, kp2)
 
-def runSerie(detector, matcher, docs):
+def runSerie(detector, matcher, docs, algorithmName):
 	serieResult = []
 	docs.rewind()
 	totalDocs = docs.count(True)
@@ -201,13 +208,18 @@ def runSerie(detector, matcher, docs):
 	if totalDocs <= 0:
 		return serieResult
 
-	img1 = loadImage(docs.next())
+	docIm1 = docs.next()
+	img1 = loadImage(docIm1)
 	for index in range(0, totalDocs-1):
-		img2 = loadImage(docs.next())
-		vectors = getMatches(detector, matcher, img1, img2)
-		serieResult.append(vectors)
-		img1 = img2
+		docIm2 = docs.next()
+		img2 = loadImage(docIm2)
 
+		vectors = getMatches(detector, matcher, img1, img2)
+		serie = Serie(vectors, (docIm1['date'], docIm2['date']), (docIm1['type'], docIm2['type']), algorithmName)
+		serieResult.append(serie)
+
+		img1 = img2
+		docIm1 = docIm2
 	return serieResult
 
 def extractVectors(matches, kp1, kp2):
@@ -228,27 +240,48 @@ def extractVectors(matches, kp1, kp2):
 	return np.array([X, Y, U, V])
 
 def getImagesFromDB(collection, limit):
-	return collection.find({"type": "vis"}).sort("date", DESCENDING).limit(limit)
+	return collection.find({"type": "vis"}).sort("date").skip(11).limit(limit)
 
 def getImageDimessions(doc):
 	im = loadImage(doc.next())
 	return im.shape
 
-def plotVectorMap(data, title, index):
-	X, Y, U, V = data
+def getHumanTitle(timestamp, imgType):
+	date = datetime.datetime.fromtimestamp(timestamp)
+	humanDate = date.strftime('%d-%m-%Y %H:%M')
 
-	plt.title(title + " - " + str(index))
-	plt.quiver(X, Y, U, V, units='xy')
-	plt.savefig(title + "_" + str(index) + ".png", dpi = 600)
+	return humanDate + " - " + imgType
+
+def plotMatrix(matrix, title):
+	plt.title(title)
+	plt.imshow(matrix)
+	plt.savefig(str(title) + ".png", dpi = 600)
 	plt.show()
 
-def plotSet(fieldSet, title):
-	for index, field in enumerate(fieldSet):
-		plotVectorMap(field, title, index)
+def plotVectorMap(data, title):
+	X, Y, U, V = data
+
+	plt.title(title)
+	plt.quiver(X, Y, U, V, units='xy')
+	plt.savefig(title + ".png", dpi = 600)
+	plt.show()
+
+def plotWindFields(fieldSet):
+	for serie in fieldSet:
+		plotVectorMap(serie.field, serie.getPrettyTitle())
+
+def plotImageSet(docs):
+	docs.rewind()
+
+	for index  in range(docs.count(True)):
+		doc = docs.next()
+		image = loadImage(doc)
+		title = getHumanTitle(doc['date'], doc['type'])
+		plotMatrix(image, title)
 
 def getNegriDetector():
 	# Ideia to reproduce Negri method to recognize similar matrices
-	return NegriDetector(70, 255, 24, 24)
+	return NegriDetector(70, 255, 40, 40)
 
 def getNegriMatcher():
 	return NegriMatcher()
@@ -264,21 +297,25 @@ def runExperiment(collection, serieSize):
 
 	imageDocs = getImagesFromDB(collection, serieSize)
 
-	# negriFields = runSerie(negriDetector, negriMatcher, imageDocs)
+	negriFields = runSerie(negriDetector, negriMatcher, imageDocs, "NEGRI")
 	# siftFields = runSerie(siftDetector, matcher, imageDocs)
-	surfFields = runSerie(surfDetector, matcher, imageDocs)
+	surfFields = runSerie(surfDetector, matcher, imageDocs, "SURF")
 
 	orbMatcher = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
-	orbFields = runSerie(orbDetector, orbMatcher, imageDocs)
-	# plotSet(negriFields, "NEGRI")
-	plotSet(orbFields, "ORB")
-	plotSet(surfFields, "SURF")
-	# plotSet(siftFields, "SIFT")
+	orbFields = runSerie(orbDetector, orbMatcher, imageDocs, "ORB")
+	
+	# Ploting
+	plotImageSet(imageDocs)
+
+	plotWindFields(negriFields)
+	plotWindFields(orbFields)
+	plotWindFields(surfFields)
+	# plotWindFields(siftFields, "SIFT")
 
 	return {
 		# "negri": negriFields, 
-		"orb": orbFields, 
-		"surf": surfFields, 
+		"orb": orbFields
+		# "surf": surfFields, 
 		# "sift": siftFields
 	}
 
@@ -286,7 +323,7 @@ def main():
 	# client = MongoClient('192.168.0.16', 27017)
 	client = MongoClient('192.168.0.16', 27017)
 	imagesCollection = client["nephos-comparation"]["images"]
-	results = runExperiment(imagesCollection, 15)
+	results = runExperiment(imagesCollection, 3)
 
 	client.close()
 	return results
