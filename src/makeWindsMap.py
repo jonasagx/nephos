@@ -1,5 +1,6 @@
 import sys
 import csv
+import time
 import datetime
 
 import cv2 as cv
@@ -27,6 +28,9 @@ class Serie:
 		title += "-" + self.types[0]
 		title += " " + self.algorithmName
 		return title
+
+	def getField(self):
+		return self.field
 
 	def timestamp2StringDate(self, timestamp):
 		date = datetime.datetime.fromtimestamp(timestamp)
@@ -200,7 +204,14 @@ def getMatches(detector, matcher, img1, img2):
 
 	return extractVectors(matches, kp1, kp2)
 
+def timer(t0=None):
+	if t0 == None:
+		return time.time()
+	else:
+		return time.time() - t0
+
 def runSerie(detector, matcher, docs, algorithmName):
+	t0 = timer()
 	serieResult = []
 	docs.rewind()
 	totalDocs = docs.count(True)
@@ -220,6 +231,8 @@ def runSerie(detector, matcher, docs, algorithmName):
 
 		img1 = img2
 		docIm1 = docIm2
+
+	print("%.3fs - %s" % (timer(t0), algorithmName))
 	return serieResult
 
 def extractVectors(matches, kp1, kp2):
@@ -281,7 +294,7 @@ def plotImageSet(docs):
 
 def getNegriDetector():
 	# Ideia to reproduce Negri method to recognize similar matrices
-	return NegriDetector(70, 255, 40, 40)
+	return NegriDetector(70, 255, 50, 50)
 
 def getNegriMatcher():
 	return NegriMatcher()
@@ -298,7 +311,7 @@ def runExperiment(collection, serieSize):
 	imageDocs = getImagesFromDB(collection, serieSize)
 
 	negriFields = runSerie(negriDetector, negriMatcher, imageDocs, "NEGRI")
-	# siftFields = runSerie(siftDetector, matcher, imageDocs)
+	siftFields = runSerie(siftDetector, matcher, imageDocs, "SIFT")
 	surfFields = runSerie(surfDetector, matcher, imageDocs, "SURF")
 
 	orbMatcher = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
@@ -310,20 +323,47 @@ def runExperiment(collection, serieSize):
 	plotWindFields(negriFields)
 	plotWindFields(orbFields)
 	plotWindFields(surfFields)
-	# plotWindFields(siftFields, "SIFT")
+	plotWindFields(siftFields)
 
-	return {
-		# "negri": negriFields, 
-		"orb": orbFields
-		# "surf": surfFields, 
-		# "sift": siftFields
+	allResults = {
+		"negri": negriFields, 
+		"orb": orbFields,
+		"surf": surfFields, 
+		"sift": siftFields
 	}
+
+	showHomogeneity(allResults)
+
+	return allResults
+
+def plotHist(data):
+	plt.hist(data)
+	plt.title("Tamanho dos vetores")
+	plt.xlabel("Tamanho")
+	plt.ylabel("Frequência")
+	plt.show()
+
+def showHomogeneity(allResults):
+	length = []
+	angles = []
+	for resultKey in allResults:
+		series = allResults[resultKey]
+		for serie in series:
+			x, y, u, v = serie.field
+			vectorsZip = zip(x,y,u,v)
+			vectors = list(vectorsZip)
+			for v in vectors:
+				a,b,c,d = v
+				d = distance.euclidean((a,b), (c,d))
+				# an = np.arctan(shiftVector(a,b,c,d))
+				length.append(d)
+	plotHist(length)
 
 def main():
 	# client = MongoClient('192.168.0.16', 27017)
 	client = MongoClient('192.168.0.16', 27017)
 	imagesCollection = client["nephos-comparation"]["images"]
-	results = runExperiment(imagesCollection, 3)
+	results = runExperiment(imagesCollection, 2)
 
 	client.close()
 	return results
