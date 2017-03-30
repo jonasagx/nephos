@@ -336,19 +336,20 @@ def runExperiment(collection, serieSize):
 
 	return allResults
 
-def plotHist(data):
-	plt.hist(data)
-	plt.title("Tamanho dos vetores")
+def plotHist(data, algorithm):
+	# plt.vlines(t, [0], data)
+	plt.hist(data, bins=100)
+	plt.title("Tamanho dos vetores - " + algorithm)
 	plt.xlabel("Tamanho")
 	plt.ylabel("Frequência")
 	plt.show()
 
 def showHomogeneity(allResults):
-	length = []
-	angles = []
 	for resultKey in allResults:
 		series = allResults[resultKey]
+		length = []
 		for serie in series:
+
 			x, y, u, v = serie.field
 			vectorsZip = zip(x,y,u,v)
 			vectors = list(vectorsZip)
@@ -357,7 +358,7 @@ def showHomogeneity(allResults):
 				d = distance.euclidean((a,b), (c,d))
 				# an = np.arctan(shiftVector(a,b,c,d))
 				length.append(d)
-	plotHist(length)
+		plotHist(length, resultKey)
 
 def main():
 	# client = MongoClient('192.168.0.16', 27017)
