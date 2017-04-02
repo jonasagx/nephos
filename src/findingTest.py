@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from datetime import datetime
 from pymongo import MongoClient
 
 class Algorithm:
@@ -48,50 +49,65 @@ def runSerie(cvImages, detector):
 
 	for index, image in enumerate(cvImages):
 		(kp1, des1) = detector.detectAndCompute(image, None)
-		l = len(kp1)
-		serie.append(np.log10(l))
+		serie.append(len(kp1))
 	return serie
+
+def convertToImage(doc):
+	img = base64.b64decode(doc['image64'])
+	npimg = np.fromstring(img, dtype=np.uint8)
+	# print(datetime.fromtimestamp(doc['date']))
+	return cv.imdecode(npimg, 1)
 
 def convertToImages(imagesFromDb):
 	cvImages = []
 
+	firstDoc = imagesFromDb.next()
+	cvImages.append(convertToImage(firstDoc))
+	timestamp = firstDoc['date']
+
 	for result in imagesFromDb:
-		img = base64.b64decode(result['image64'])
-		npimg = np.fromstring(img, dtype=np.uint8) 
-		source = cv.imdecode(npimg, 1)
+		source = convertToImage(result)
 		cvImages.append(source)
-	return cvImages
+	return (timestamp, cvImages)
 
-def runExperiment(types, collection):
-	experimentResults = {}
-	for t in types:	
-		results = collection.find({"type":t}).sort("date").limit(100)
-		cvImages = convertToImages(results)
-		algorithms = []
+def runExperiment(type, collection, size):
+	series = {}
+		
+	results = collection.find({"type":type}).sort("date").limit(size)
+	firstDate, cvImages = convertToImages(results)
+	algorithms = []
 
-		algorithms.append(Algorithm("SIFT", cv.xfeatures2d.SIFT_create()))
-		algorithms.append(Algorithm("SURF", cv.xfeatures2d.SURF_create()))
-		algorithms.append(Algorithm("ORB", cv.ORB_create()))
-		algorithms.append(Algorithm("NEGRI", NegriDetector(80, 255)))
+	algorithms.append(Algorithm("SIFT", cv.xfeatures2d.SIFT_create()))
+	algorithms.append(Algorithm("SURF", cv.xfeatures2d.SURF_create()))
+	algorithms.append(Algorithm("ORB", cv.ORB_create()))
+	algorithms.append(Algorithm("NEGRI", NegriDetector(80, 255)))
 
-		experimentResults.update(runSerieExtraction(cvImages, algorithms))
+	series.update(runSerieExtraction(cvImages, algorithms))
 
-	return plotDataFrame(experimentResults)
+	df = createDataFrame(series, firstDate, "45min", size)
+	plotDataFrame(df)
 
-def plotDataFrame(data):
+	return df
+
+def createDataFrame(data, firstDate, frequency, size):
 	ts = pd.DataFrame.from_dict(data)
-	size = ts[ts.columns[0]].size
-	ts.set_index(pd.date_range('1/1/2011 00:00:00', periods=size, freq='45min')).plot()
-	plt.show()
+	date = datetime.fromtimestamp(firstDate)
 
-	return ts
+	return ts.set_index(pd.date_range(date, periods=size, freq=frequency))
+
+def plotDataFrame(df):
+	ax = df.plot(figsize=(15, 5), logy=True)
+	ax.set_xlabel("Tempo")
+	ax.set_ylabel("key-points/imagem - escala log")
+	# plt.title("Pontos de interesse por imagem")
+	plt.savefig("serie_keypoints.png", dpi = 600)
+	plt.show()
 
 def main():
 	imagesCollection = getCollection('192.168.0.16', 27017, "nephos", "images")
 	
 	# types = imagesCollection.find({}).distinct("type")
 	# types = imagesCollection.find({"type": "vis"}).sort("date").limit(3)
-	types = ['ir2']
-	return runExperiment(types, imagesCollection)
+	return runExperiment('ir2', imagesCollection, 300)
 
 ts = main()
