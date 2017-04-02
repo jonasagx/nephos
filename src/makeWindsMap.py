@@ -154,8 +154,12 @@ class NegriMatcher:
 		corrMatrix = self.getCorrCoefs(descriptors1, descriptors2)
 
 		#Cross filter results
-		# self.plotMatrix(corrMatrix)
+		self.plotMatrix(corrMatrix)
 		return self.findBestMatches(corrMatrix)
+
+	def plotMatrix(self, matrix):
+		plt.imshow(matrix)
+		plt.show()
 
 	def findBestMatches(self, corrMatrix):
 		matches = []
@@ -253,7 +257,7 @@ def extractVectors(matches, kp1, kp2):
 	return np.array([X, Y, U, V])
 
 def getImagesFromDB(collection, limit):
-	return collection.find({"type": "vis"}).sort("date").skip(11).limit(limit)
+	return collection.find({"type": "vis"}).sort("date").skip(2).limit(limit)
 
 def getImageDimessions(doc):
 	im = loadImage(doc.next())
@@ -294,7 +298,7 @@ def plotImageSet(docs):
 
 def getNegriDetector():
 	# Ideia to reproduce Negri method to recognize similar matrices
-	return NegriDetector(70, 255, 50, 50)
+	return NegriDetector(70, 255, 34, 34)
 
 def getNegriMatcher():
 	return NegriMatcher()
@@ -317,13 +321,7 @@ def runExperiment(collection, serieSize):
 	orbMatcher = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
 	orbFields = runSerie(orbDetector, orbMatcher, imageDocs, "ORB")
 	
-	# Ploting
-	plotImageSet(imageDocs)
-
-	plotWindFields(negriFields)
-	plotWindFields(orbFields)
-	plotWindFields(surfFields)
-	plotWindFields(siftFields)
+	# plotImageSet(imageDocs)
 
 	allResults = {
 		"negri": negriFields, 
@@ -332,19 +330,63 @@ def runExperiment(collection, serieSize):
 		"sift": siftFields
 	}
 
-	showHomogeneity(allResults)
+	serieHist = showHomogeneity(allResults)
+	plotFieldsTogether(allResults)
+	plotHistTogether(serieHist)
 
 	return allResults
 
-def plotHist(data, algorithm):
-	# plt.vlines(t, [0], data)
-	plt.hist(data, bins=100)
-	plt.title("Tamanho dos vetores - " + algorithm)
-	plt.xlabel("Tamanho")
-	plt.ylabel("Frequência")
+def plotFieldsTogether(fields):
+	fig = plt.figure(dpi=500)
+	fSize = 7
+
+	for index, key in enumerate(fields):
+		X, Y, U, V = fields[key][0].field
+
+		ax = fig.add_subplot(2,2, index+1)
+		ax.quiver(X, Y, U, V, units='xy')
+		ax.set_title(key.upper(), fontsize=fSize)
+		ax.set_xticklabels( () )
+		ax.set_yticklabels( () )
+
+	plt.tight_layout()
+	plt.savefig("vector fields.png", dpi=500)
+	plt.show()
+
+def plotHistTogether(serieHist):
+	fig = plt.figure(dpi=500)
+	nBins = 100
+	fSize = 7
+
+	ax = fig.add_subplot(111)
+	ax.set_xlabel("Tamanho")
+	ax.set_ylabel("Frequência")
+
+	ax.spines['top'].set_color('none')
+	ax.spines['bottom'].set_color('none')
+	ax.spines['left'].set_color('none')
+	ax.spines['right'].set_color('none')
+	ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
+
+	for index, key in enumerate(serieHist):
+		subAx = fig.add_subplot(2, 2, index+1)
+		subAx.set_title(key.upper(), fontsize=fSize)
+		subAx.hist(serieHist[key], bins=nBins)
+
+		for tick in subAx.xaxis.get_major_ticks():
+			tick.label.set_fontsize(fSize)
+
+		for tick in subAx.yaxis.get_major_ticks():
+			tick.label.set_fontsize(fSize) 
+
+	plt.tight_layout()
+	fig = plt.gcf()
+
+	plt.savefig("histograms.png", dpi=500)
 	plt.show()
 
 def showHomogeneity(allResults):
+	serieHist = {}
 	for resultKey in allResults:
 		series = allResults[resultKey]
 		length = []
@@ -358,7 +400,8 @@ def showHomogeneity(allResults):
 				d = distance.euclidean((a,b), (c,d))
 				# an = np.arctan(shiftVector(a,b,c,d))
 				length.append(d)
-		plotHist(length, resultKey)
+		serieHist[resultKey] = length
+	return serieHist
 
 def main():
 	# client = MongoClient('192.168.0.16', 27017)
