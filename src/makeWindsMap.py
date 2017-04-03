@@ -257,7 +257,7 @@ def extractVectors(matches, kp1, kp2):
 	return np.array([X, Y, U, V])
 
 def getImagesFromDB(collection, limit):
-	return collection.find({"type": "vis"}).sort("date").skip(2).limit(limit)
+	return collection.find({"type": "ir2"}).sort("date").limit(limit)
 
 def getImageDimessions(doc):
 	im = loadImage(doc.next())
@@ -287,18 +287,10 @@ def plotWindFields(fieldSet):
 	for serie in fieldSet:
 		plotVectorMap(serie.field, serie.getPrettyTitle())
 
-def plotImageSet(docs):
-	docs.rewind()
-
-	for index  in range(docs.count(True)):
-		doc = docs.next()
-		image = loadImage(doc)
-		title = getHumanTitle(doc['date'], doc['type'])
-		plotMatrix(image, title)
-
 def getNegriDetector():
 	# Ideia to reproduce Negri method to recognize similar matrices
 	return NegriDetector(70, 255, 34, 34)
+	# return NegriDetector(70, 255, 50, 50)
 
 def getNegriMatcher():
 	return NegriMatcher()
@@ -321,7 +313,7 @@ def runExperiment(collection, serieSize):
 	orbMatcher = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
 	orbFields = runSerie(orbDetector, orbMatcher, imageDocs, "ORB")
 	
-	# plotImageSet(imageDocs)
+	plotImageSet(imageDocs)
 
 	allResults = {
 		"negri": negriFields, 
@@ -335,6 +327,34 @@ def runExperiment(collection, serieSize):
 	plotHistTogether(serieHist)
 
 	return allResults
+
+def plotImageSet(docs):
+	docs.rewind()
+	fig = plt.figure(dpi=500)
+	total = docs.count(True)
+
+	for index in range(total):
+		doc = docs.next()
+		image = loadImage(doc)
+		title = getHumanTitle(doc['date'], doc['type'])
+
+		ax = fig.add_subplot(1, 2, index+1)
+		ax.imshow(image)
+		ax.set_title(title, fontsize=6)
+		ax = removeChartEdges(ax)
+
+	plt.tight_layout()
+	plt.savefig('serie original.png', dpi=500)
+	plt.show()
+
+def removeChartEdges(ax):
+	ax.spines['top'].set_color('none')
+	ax.spines['bottom'].set_color('none')
+	ax.spines['left'].set_color('none')
+	ax.spines['right'].set_color('none')
+	ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
+
+	return ax
 
 def plotFieldsTogether(fields):
 	fig = plt.figure(dpi=500)
@@ -350,7 +370,7 @@ def plotFieldsTogether(fields):
 		ax.set_yticklabels( () )
 
 	plt.tight_layout()
-	plt.savefig("vector fields.png", dpi=500)
+	plt.savefig("fields maps.png", dpi=500)
 	plt.show()
 
 def plotHistTogether(serieHist):
@@ -362,11 +382,7 @@ def plotHistTogether(serieHist):
 	ax.set_xlabel("Tamanho")
 	ax.set_ylabel("Frequência")
 
-	ax.spines['top'].set_color('none')
-	ax.spines['bottom'].set_color('none')
-	ax.spines['left'].set_color('none')
-	ax.spines['right'].set_color('none')
-	ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
+	ax = removeChartEdges(ax)
 
 	for index, key in enumerate(serieHist):
 		subAx = fig.add_subplot(2, 2, index+1)
@@ -404,9 +420,8 @@ def showHomogeneity(allResults):
 	return serieHist
 
 def main():
-	# client = MongoClient('192.168.0.16', 27017)
 	client = MongoClient('192.168.0.16', 27017)
-	imagesCollection = client["nephos-comparation"]["images"]
+	imagesCollection = client["nephos"]["images"]
 	results = runExperiment(imagesCollection, 2)
 
 	client.close()
